@@ -12,10 +12,10 @@ index 7c8cf3a5..857c9a52 100644
  	sun8i-r16-nintendo-nes-classic.dtb \
 diff --git a/arch/arm/dts/sun8i-a33-pf1007l-backup.dts b/arch/arm/dts/sun8i-a33-pf1007l-backup.dts
 new file mode 100644
-index 00000000..783593da
+index 00000000..368ea7d6
 --- /dev/null
 +++ b/arch/arm/dts/sun8i-a33-pf1007l-backup.dts
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,33 @@
 +// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
 +/*
 + * PF1007L backup build: the Q8 A33 tablet reference design, plus
@@ -35,6 +35,7 @@ index 00000000..783593da
 +	pinctrl-0 = <&mmc2_8bit_pins>;
 +	vmmc-supply = <&reg_dcdc1>;
 +	bus-width = <8>;
++	max-frequency = <25000000>;
 +	non-removable;
 +	cap-mmc-hw-reset;
 +	status = "okay";
@@ -88,10 +89,21 @@ index 00000000..4360358b
 +CONFIG_CMD_USB_MASS_STORAGE=y
 +CONFIG_CRC32_VERIFY=y
 diff --git a/drivers/usb/gadget/f_mass_storage.c b/drivers/usb/gadget/f_mass_storage.c
-index 71dc58da..d76ab970 100644
+index 71dc58da..3ec9a5f8 100644
 --- a/drivers/usb/gadget/f_mass_storage.c
 +++ b/drivers/usb/gadget/f_mass_storage.c
-@@ -2488,6 +2488,8 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
+@@ -1323,7 +1323,9 @@ static int do_start_stop(struct fsg_common *common)
+ 		return -EINVAL;
+ 	}
+ 
+-	common->eject = 1;
++	/* Only an unload request ejects; start and idle-stop keep UMS active. */
++	if ((common->cmnd[4] & 0x03) == 0x02)
++		common->eject = 1;
+ 
+ 	return 0;
+ }
+@@ -2488,6 +2490,8 @@ static struct fsg_common *fsg_common_init(struct fsg_common *common,
  
  	for (i = 0; i < nluns; i++) {
  		common->luns[i].removable = 1;
