@@ -1,0 +1,11 @@
+# Only dashboard/ and hub/ are needed to build frame-hub. Never send dumps or backups to Docker.
+**
+!dashboard
+!dashboard/**
+!hub
+!hub/**
+dashboard/node_modules
+dashboard/dist
+dashboard/kiosk
+hub/node_modules
+hub/.env

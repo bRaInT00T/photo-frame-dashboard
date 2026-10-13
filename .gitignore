@@ -14,3 +14,11 @@ __pycache__/
 *.HEIC
 *.heic
 scripts/si006-webview-overlay/build/
+
+# frame-hub secrets and installs
+hub/.env
+hub/config.json
+scripts/a33-uboot/*.bak
+hub/node_modules/
+dashboard/node_modules/
+dashboard/dist/

@@ -7,9 +7,9 @@
   function ambientInfo() {
     var n = App.now(), w = App.weatherNow(), next = App.nextEvent();
     return '<div class="amb-clock"><div class="amb-time num">' + App.fmt.time(n, false) + '</div>' +
-      '<div class="amb-date">' + App.fmt.day(n) + ', ' + App.fmt.month(n) + ' ' + n.getDate() + '</div></div>' +
+      '<div class="amb-date">' + App.fmt.day(n) + ', <span class="amb-nw">' + App.fmt.month(n) + ' ' + n.getDate() + '</span></div></div>' +
       '<div class="amb-right">' +
-      '<div class="amb-wx">' + App.icon(w.cond, 44) + '<span class="num">' + w.temp + '°</span><small>' + w.summary + '</small></div>' +
+      '<div class="amb-wx">' + App.icon(w.cond, 90) + '<span class="num">' + w.temp + '°</span><small>' + w.summary + '</small></div>' +
       (next ? '<div class="amb-next" style="' + App.pstyle(App.evColor(next)) + '"><i></i>' + App.esc(next.title) + ' · ' + App.fmt.time(next.start) + '</div>' : '') +
       '<div class="amb-who">' + D.people.map(function (p) { return App.avatar(p, 34, p.home ? '' : 'avatar--away'); }).join('') + '</div>' +
       '</div>';
@@ -36,7 +36,7 @@
   App.on('ready', function () {
     $('#ambient').innerHTML = '<div class="amb-stage"></div><div class="amb-scrim"></div><div class="amb-info"></div>';
     $('#night').innerHTML = '<div class="nt-inner"></div>';
-    amb.show = new App.Slideshow($('#ambient .amb-stage'), { layout: 'cover', captions: false, interval: 14000 });
+    amb.show = new App.Slideshow($('#ambient .amb-stage'), { layout: 'cover', captions: false, interval: 14000, fillPortrait: true, boxAr: 1280 / 800 });
     $('#ambient').addEventListener('click', function () { App.setMode('day'); App.go('home'); });
     $('#night').addEventListener('click', function () { App.setMode('nightdash'); });
   });

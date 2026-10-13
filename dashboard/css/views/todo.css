@@ -1,0 +1,19 @@
+/* To-Do (Home Assistant to-do list) */
+.td { height: 100%; display: flex; flex-direction: column; gap: 16px; }
+.td-head { display: flex; align-items: center; gap: 24px; }
+.td-head h1 { font-size: 64px; line-height: .95; }
+.td-count { margin-right: auto; font-size: 22px; color: var(--mute); padding-top: 22px; }
+.td-count .num { font-size: 34px; color: var(--ink); }
+.td-add { display: flex; gap: 10px; }
+.td-add input { width: 320px; height: var(--tap); padding: 0 18px; border-radius: 999px; border: 2px solid var(--ink); background: var(--card); font: inherit; font-size: 20px; color: var(--ink); }
+.td-list { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 40px; }
+.td-row { width: 100%; display: flex; align-items: center; gap: 18px; min-height: 76px; padding: 12px 8px; border-bottom: 1px solid var(--paper-2); text-align: left; }
+.td-row:active { background: var(--paper-2); }
+.td-check { width: 40px; height: 40px; flex: none; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; }
+.td-title { flex: 1; min-width: 0; font-size: 26px; line-height: 1.2; }
+.td-due { font-size: 16px; font-weight: 700; padding: 6px 12px; border-radius: 999px; background: var(--paper-2); }
+.td-due.is-late { background: var(--amber); }
+.td-row.is-done .td-check { background: var(--ink); color: var(--paper); }
+.td-row.is-done .td-title { color: var(--mute); text-decoration: line-through; }
+.td-toggle { margin: 18px 0 6px; padding: 10px 18px; border-radius: 999px; background: var(--paper-2); font-size: 16px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.td-empty { font-family: var(--serif); font-size: 34px; color: var(--mute); padding: 30px 8px; }

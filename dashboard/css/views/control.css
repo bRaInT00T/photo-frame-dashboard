@@ -104,3 +104,23 @@
 .cam-big .tk-live { left: 20px; top: 20px; }
 .cam-big-bar .label { position: absolute; left: 24px; bottom: 20px; }
 .is-pulse { box-shadow: 0 0 0 6px var(--warm); }
+
+/* Vacuum card (Home Assistant) in place of the media player */
+.hc-media--vac { flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; margin-top: 16px; }
+.vac-top { display: flex; align-items: center; gap: 14px; }
+.vac-icon { width: 64px; height: 64px; border-radius: 10px; background: var(--paper-2); display: flex; align-items: center; justify-content: center; flex: none; }
+.vac-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.vac-btn { height: 64px; border-radius: var(--r); background: var(--ink); color: var(--paper); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 18px; font-weight: 700; }
+.vac-btn--light { background: var(--paper-2); color: var(--ink); }
+.vac-btn:active { transform: scale(.97); }
+
+/* Thermostat setpoints (Home Assistant) */
+.th-sps { display: flex; gap: 10px; }
+.th-sp { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 12px; border-radius: 14px; background: rgba(255, 255, 255, .08); }
+.th-sp small { font-size: 13px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .7; }
+.th-sp .num { font-size: 56px; line-height: .85; letter-spacing: -.03em; }
+.th-sp-btns { display: flex; gap: 12px; }
+.th-btn--s { width: 56px; height: 56px; }
+.th-off { flex: 1; text-align: center; font-size: 28px; padding: 30px 0; opacity: .7; }
+.cams--one { grid-template-columns: 1fr; }
+.cams--one .cam { aspect-ratio: 16 / 9; }

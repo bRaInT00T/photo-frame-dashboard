@@ -4,6 +4,7 @@
   var D = window.DATA;
 
   function src(p, big) {
+    if (p.url) return p.url;
     var w = p.o === 'p' ? 800 : 1600, h = p.o === 'p' ? 1200 : 1000;
     if (!big) { w = Math.round(w / 2); h = Math.round(h / 2); }
     return App.img(p.seed, w, h);
@@ -35,19 +36,26 @@
       '<div class="cap-date serif">' + (ps.length > 1 ? m.monthYear : m.date) + '</div>' +
       '</div>';
   }
-  function kb(p, still) {
+  // Where to anchor a cover-cropped photo so the faces stay in frame (fx/fy from frame-hub).
+  function focus(p, boxAr) {
+    if (p.fx == null || !p.ar) return '';
+    function pct(v) { return Math.round(Math.max(0, Math.min(1, v)) * 100) + '%'; }
+    if (p.ar < boxAr) { var h = boxAr / p.ar; return ' style="object-position:50% ' + pct((p.fy * h - 0.5) / (h - 1)) + '"'; }
+    return ' style="object-position:' + pct((p.fx * p.ar - boxAr / 2) / (p.ar - boxAr)) + ' 50%"';
+  }
+  function kb(p, still, boxAr) {
     var dx = (Math.random() > 0.5 ? 1 : -1) * (1 + Math.random() * 2.5) + '%';
     var dy = (Math.random() > 0.5 ? 1 : -1) * (0.5 + Math.random() * 1.5) + '%';
-    return '<div class="kb' + (still ? ' kb--still' : '') + '" style="--dx:' + dx + ';--dy:' + dy + '"><img src="' + src(p, true) + '" alt=""></div>';
+    return '<div class="kb' + (still ? ' kb--still' : '') + '" style="--dx:' + dx + ';--dy:' + dy + '"><img src="' + src(p, true) + '"' + (boxAr ? focus(p, boxAr) : '') + ' alt=""></div>';
   }
 
   var BUILD = {
     cover: function (ps, o) {
       var p = ps[0];
-      if (p.o === 'p') {
+      if (p.o === 'p' && !o.fillPortrait) {
         return '<div class="slide slide--fit"><img class="blurfill" src="' + src(p) + '" alt=""><img class="fitimg" src="' + src(p, true) + '" alt="">' + (o.captions ? caption(ps) : '') + '</div>';
       }
-      return '<div class="slide slide--cover">' + kb(p) + (o.captions ? caption(ps) : '') + '</div>';
+      return '<div class="slide slide--cover">' + kb(p, false, o.boxAr || 1.6) + (o.captions ? caption(ps) : '') + '</div>';
     },
     pair: function (ps, o) {
       return '<div class="slide slide--pair"><div class="pane">' + kb(ps[0], true) + '</div><div class="pane">' + kb(ps[1], true) + '</div>' + (o.captions ? caption(ps, 'm') : '') + '</div>';
@@ -63,7 +71,14 @@
     }
   };
 
+  var all = [];
+  // New photo list (e.g. live photos replacing the demo set): drop queued photos and show a new one.
+  App.resetSlideshows = function () {
+    all.forEach(function (s) { s.queue = []; s.history = []; if (s.timer) s.next(); });
+  };
+
   App.Slideshow = function (el, opts) {
+    all.push(this);
     this.el = el;
     this.o = Object.assign({ layout: 'auto', interval: 15000, captions: true }, opts || {});
     this.queue = [];

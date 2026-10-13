@@ -15,7 +15,7 @@
     var tmin = Math.min.apply(null, hours.map(function (h) { return h.t; }));
     var tmax = Math.max.apply(null, hours.map(function (h) { return h.t; }));
     return '<div class="h-wx-top">' +
-      '<span class="h-wx-icon">' + App.icon(w.cond, 60) + '</span>' +
+      '<span class="h-wx-icon">' + App.icon(w.cond, 70) + '</span>' +
       '<span class="h-wx-temp num">' + w.temp + '°</span>' +
       '<span class="h-wx-meta"><b>' + w.label + '</b><span>H ' + w.hi + '°  L ' + w.lo + '°</span></span>' +
       '</div>' +
@@ -29,7 +29,7 @@
 
   function presence() {
     return D.people.map(function (p) {
-      var sub = p.home ? 'Home' : (p.eta ? '<b>ETA ' + p.eta + ' min</b>' : p.status);
+      var sub = p.unknown ? '' : p.home ? 'Home' : (p.eta ? '<b>ETA ' + p.eta + ' min</b>' : p.status);
       return '<div class="h-who' + (p.home ? ' is-home' : '') + '" style="' + App.pstyle(p) + '">' +
         App.avatar(p, 36, p.home ? '' : 'avatar--away') +
         '<span><b>' + p.name + '</b><small>' + sub + '</small></span></div>';
@@ -109,6 +109,12 @@
   }
 
   function shopping() {
+    if (D.todo && D.todo.items) {
+      var todo = D.todo.items.filter(function (i) { return !i.done; });
+      return '<div class="label">' + App.esc(D.todo.name) + '</div>' +
+        '<div class="h-stat"><span class="num">' + todo.length + '</span><small>to do</small></div>' +
+        '<ul class="h-recent">' + todo.slice(0, 3).map(function (i) { return '<li><i></i>' + App.esc(i.title) + '</li>'; }).join('') + '</ul>';
+    }
     var open = D.groceries.filter(function (g) { return !g.done; });
     var recent = open.slice(-3).reverse();
     return '<div class="label">Shopping</div>' +
@@ -121,13 +127,17 @@
   function status() {
     var lights = D.devices.filter(function (d) { return d.type === 'light' && d.on; }).length;
     var unlocked = D.devices.filter(function (d) { return d.type === 'lock' && !d.locked; });
-    var garage = D.devices.filter(function (d) { return d.type === 'garage'; })[0];
+    var garage = D.devices.filter(function (d) { return d.type === 'garage'; })[0] || { state: 'closed' };
+    var hasSecurity = D.devices.some(function (d) { return d.type === 'garage' || d.type === 'lock'; });
     var secure = !unlocked.length && garage.state === 'closed';
     var secText = secure ? 'All locked' : (garage.state !== 'closed' ? 'Garage open' : unlocked[0].name + ' unlocked');
+    var v = D.vacuum;
+    var second = !hasSecurity && v
+      ? '<div class="h-st-row' + (v.state === 'error' || v.binFull ? ' is-warn' : '') + '">' + App.icon('home', 24) + '<span>' + App.esc(v.name) + ' · ' + (v.binFull ? 'bin full' : v.label.toLowerCase()) + '</span></div>'
+      : '<div class="h-st-row' + (secure ? '' : ' is-warn') + '">' + App.icon(secure ? 'lock' : 'unlock', 24) + '<span>' + secText + '</span></div>';
     return '<div class="label">Home</div>' +
-      '<div class="h-st-row">' + App.icon('bulb', 24) + '<b class="num">' + lights + '</b><span>lights on</span></div>' +
-      '<div class="h-st-row' + (secure ? '' : ' is-warn') + '">' + App.icon(secure ? 'lock' : 'unlock', 24) + '<span>' + secText + '</span></div>' +
-      '<div class="h-st-row">' + App.icon('thermo', 24) + '<b class="num">' + D.climate.current + '°</b><span>inside</span></div>';
+      '<div class="h-st-row">' + App.icon('bulb', 24) + '<b class="num">' + lights + '</b><span>lights on</span></div>' + second +
+      '<div class="h-st-row">' + App.icon('thermo', 24) + '<b class="num">' + Math.round(D.climate.current) + '°</b><span>inside</span></div>';
   }
 
   function paint() {
@@ -139,6 +149,7 @@
     el.querySelector('.h-lanes').innerHTML = lanes();
     el.querySelector('.h-chores').innerHTML = chores();
     el.querySelector('.h-shop').innerHTML = shopping();
+    el.querySelector('.h-shop').dataset.go = D.todo && D.todo.items ? 'todo' : 'shopping';
     el.querySelector('.h-status').innerHTML = status();
   }
 
@@ -167,7 +178,9 @@
           var g = e.target.closest('[data-go]');
           if (g) App.go(g.dataset.go);
         });
-        V.slides = new App.Slideshow(el.querySelector('.h-photo-stage'), { layout: 'cover', captions: false, interval: 12000, onChange: photoCaption });
+        var stage = el.querySelector('.h-photo-stage');
+        V.slides = new App.Slideshow(stage, { layout: 'cover', captions: false, interval: 12000, onChange: photoCaption,
+          fillPortrait: true, boxAr: stage.clientHeight ? stage.clientWidth / stage.clientHeight : 2 });
       }
       paint();
       V.slides.start();

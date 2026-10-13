@@ -1,0 +1,14 @@
+{
+  "name": "frame-hub",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LAN data hub for the photo frame dashboard: Google Calendar (iCal), Open-Meteo weather, Immich photos.",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "ical-expander": "^3.1.0"
+  }
+}

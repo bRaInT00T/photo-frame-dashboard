@@ -1,0 +1,15 @@
+services:
+  frame-hub:
+    build:
+      context: ..
+      dockerfile: hub/Dockerfile
+    container_name: frame-hub
+    restart: unless-stopped
+    ports:
+      - "8430:8430"
+    environment:
+      TZ: America/New_York
+    env_file: .env
+    volumes:
+      # Edit config.json (family, calendars, location) and restart; no rebuild needed.
+      - ./config.json:/app/config.json:ro

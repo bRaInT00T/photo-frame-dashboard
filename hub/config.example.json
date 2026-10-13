@@ -1,0 +1,103 @@
+{
+  "timezone": "America/New_York",
+  "units": "F",
+  "location": {
+    "name": "Your City, ST",
+    "latitude": 40.0,
+    "longitude": -75.0
+  },
+  "people": [
+    {
+      "id": "alex",
+      "name": "Alex",
+      "color": "#2D5BFF",
+      "ink": "#FFFFFF"
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "color": "#E4007C",
+      "ink": "#FFFFFF"
+    },
+    {
+      "id": "maya",
+      "name": "Maya",
+      "color": "#00A36C",
+      "ink": "#FFFFFF"
+    },
+    {
+      "id": "otto",
+      "name": "Otto",
+      "color": "#FFB000",
+      "ink": "#111111"
+    }
+  ],
+  "calendars": [
+    {
+      "env": "GCAL_FAMILY",
+      "people": "match"
+    }
+  ],
+  "calendarDaysBack": 1,
+  "calendarDaysAhead": 14,
+  "immich": {
+    "source": "library",
+    "cameraOnly": true,
+    "knownPeopleOnly": true,
+    "excludeDocuments": true,
+    "excludePerQuery": 60,
+    "onThisDay": true,
+    "maxPhotos": 200,
+    "album": "Frame"
+  },
+  "homeAssistant": {
+    "url": "http://homeassistant.local:8123",
+    "rooms": [
+      {
+        "id": "downstairs",
+        "name": "Downstairs",
+        "devices": [
+          {
+            "entity": "light.kitchen",
+            "name": "Kitchen"
+          },
+          {
+            "entity": "light.living_room",
+            "name": "Living Room"
+          }
+        ]
+      },
+      {
+        "id": "porch",
+        "name": "Front Porch",
+        "devices": [
+          {
+            "entity": "switch.porch_light",
+            "name": "Porch Light"
+          }
+        ]
+      }
+    ],
+    "scenes": [
+      "scene.goodnight"
+    ],
+    "vacuum": {
+      "entity": "vacuum.robot",
+      "name": "Vacuum",
+      "battery": "sensor.robot_battery",
+      "binFull": "binary_sensor.robot_bin_full"
+    },
+    "climate": "climate.thermostat",
+    "presence": {
+      "alex": "person.alex"
+    },
+    "todo": "todo.shopping_list",
+    "todoName": "To-do",
+    "cameras": [
+      {
+        "entity": "camera.back_patio",
+        "name": "Back Patio"
+      }
+    ]
+  }
+}

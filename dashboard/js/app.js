@@ -142,17 +142,18 @@
       var soccer = App.timedOn(App.now()).filter(function (e) { return /soccer/i.test(e.title) && e.start > App.now(); })[0];
       advice = soccer ? 'Pack a rain jacket for soccer' : 'Grab a rain jacket';
     } else {
-      summary = W.t[h] < 12 ? 'Clear and cool' : 'Dry all day';
-      advice = W.t[h] < 12 ? 'Jacket weather' : 'Light layers';
+      var cool = W.t[h] < (D.units === 'F' ? 54 : 12);
+      summary = cool ? 'Clear and cool' : 'Dry all day';
+      advice = cool ? 'Jacket weather' : 'Light layers';
     }
-    var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain' };
+    var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain', snow: 'Snow' };
     return { temp: W.t[h], cond: W.c[h], label: labels[W.c[h]], hi: W.hi, lo: W.lo, summary: summary, advice: advice, hour: h };
   };
   App.hourly = function (count) {
     var W = D.weather, h = App.now().getHours(), out = [];
     for (var i = 0; i < count; i++) {
-      var x = (h + i) % 24;
-      out.push({ h: x, t: W.t[x], c: W.c[x], p: W.p[x], label: i === 0 ? 'Now' : ((x % 12 || 12) + (x >= 12 ? 'p' : 'a')) });
+      var k = h + i < W.t.length ? h + i : (h + i) % 24, x = (h + i) % 24; // hub sends 48 h (today + tomorrow)
+      out.push({ h: x, t: W.t[k], c: W.c[k], p: W.p[k], label: i === 0 ? 'Now' : ((x % 12 || 12) + (x >= 12 ? 'p' : 'a')) });
     }
     return out;
   };
@@ -327,7 +328,6 @@
 
   // ------------------------------------------------------------ boot
   App.start = function () {
-    App.setTime(15, 18); // demo default: a busy weekday afternoon
     fit();
     window.addEventListener('resize', fit);
     // Switch tabs the instant a finger lands (pointerdown), not on release. Keyboard "clicks"
@@ -347,7 +347,6 @@
     setInterval(tick, 1000);
     App.emit('ready');
     refreshStale(1500);
-    setTimeout(function () { App.toast('Tip: press and hold the <b>clock</b> in the sidebar for demo controls', { ms: 6000, icon: 'bolt' }); }, 1200);
   };
   document.addEventListener('DOMContentLoaded', function () { App.start(); });
 })();
