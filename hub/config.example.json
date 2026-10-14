@@ -48,7 +48,8 @@
     "excludePerQuery": 60,
     "onThisDay": true,
     "maxPhotos": 200,
-    "album": "Frame"
+    "album": "Frame",
+    "people": []
   },
   "homeAssistant": {
     "url": "http://homeassistant.local:8123",

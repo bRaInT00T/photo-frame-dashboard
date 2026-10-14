@@ -99,21 +99,58 @@ function toEvent(cal, uid, start, end, item) {
   return e;
 }
 
+// A calendar that Home Assistant already reads (e.g. a Google calendar shared with you, where you
+// can't get the secret iCal address): { "ha": "calendar.x", "people": [...] | "match" }.
+async function haCalendarEvents(cal, from, to) {
+  const ha = CONFIG.homeAssistant;
+  if (!ha || !process.env.HA_TOKEN) return [];
+  const r = await fetch(`${ha.url}/api/calendars/${cal.ha}?start=${from.toISOString()}&end=${to.toISOString()}`,
+    { headers: { authorization: 'Bearer ' + process.env.HA_TOKEN }, signal: AbortSignal.timeout(20000) });
+  if (!r.ok) throw new Error(`calendar ${cal.ha}: ${r.status}`);
+  return (await r.json()).map((ev) => {
+    const title = ev.summary || '(busy)';
+    const e = { id: (ev.uid || title) + '@' + (ev.start.dateTime || ev.start.date), title, people: peopleFor(cal, title) };
+    if (ev.start.date) { e.allDay = true; e.startDate = ev.start.date; e.endDate = ev.end.date || ev.start.date; }
+    else { e.start = new Date(ev.start.dateTime).toISOString(); e.end = new Date(ev.end.dateTime || ev.start.dateTime).toISOString(); }
+    if (ev.location) e.loc = ev.location;
+    if (ev.description) e.notes = ev.description.slice(0, 280);
+    return e;
+  });
+}
+
+// The same event on two calendars (e.g. an invite on the family calendar and a personal one)
+// becomes one event for everyone involved.
+function mergeEvents(list) {
+  const byKey = new Map();
+  for (const e of list) {
+    const key = e.title.trim().toLowerCase() + '|' + (e.start || e.startDate) + '|' + (e.end || e.endDate);
+    const seen = byKey.get(key);
+    if (seen) seen.people = [...new Set([...seen.people, ...e.people])];
+    else byKey.set(key, e);
+  }
+  return [...byKey.values()];
+}
+
 const calendar = cached(5 * 60e3, async () => {
   const from = new Date(Date.now() - (CONFIG.calendarDaysBack ?? 1) * 864e5);
   const to = new Date(Date.now() + (CONFIG.calendarDaysAhead ?? 14) * 864e5);
   const out = [];
   for (const cal of CONFIG.calendars) {
-    const url = process.env[cal.env];
+    if (cal.ha) {
+      out.push(...await haCalendarEvents(cal, from, to).catch((e) => { log(e.message); return []; }));
+      continue;
+    }
+    // "url" for public feeds (league/school schedules); "env" names a secret address kept in .env.
+    const url = (cal.url || process.env[cal.env] || '').replace(/^webcal:\/\//i, 'https://');
     if (!url) continue;
     const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-    if (!res.ok) throw new Error(`calendar ${cal.env}: ${res.status}`);
+    if (!res.ok) throw new Error(`calendar ${cal.env || cal.url}: ${res.status}`);
     const ics = await res.text();
     const { events, occurrences } = new IcalExpander({ ics, maxIterations: 2000 }).between(from, to);
     for (const ev of events) out.push(toEvent(cal, ev.uid, ev.startDate, ev.endDate, ev));
     for (const o of occurrences) out.push(toEvent(cal, o.item.uid, o.startDate, o.endDate, o.item));
   }
-  return out;
+  return mergeEvents(out);
 });
 
 // ------------------------------------------------------------------ photos (Immich)
@@ -166,6 +203,20 @@ async function loadFaces(id) {
 }
 const hasKnownPerson = (a) => (a.people || []).some((x) => x.name && !x.isHidden);
 
+// "people": ["Alex Smith", ...] keeps only photos with at least one of those Immich people.
+// Their person ids are learned from photos as they turn up, then each one is sampled directly.
+const familyIds = new Map(); // lower-case name → Immich person id
+const familyNames = () => new Set((CONFIG.immich.people || []).map((n) => n.trim().toLowerCase()));
+function learnFamily(assets) {
+  const want = familyNames();
+  for (const a of assets) for (const x of a.people || []) if (x.name && want.has(x.name.toLowerCase())) familyIds.set(x.name.toLowerCase(), x.id);
+}
+const hasFamily = (a) => { const want = familyNames(); return (a.people || []).some((x) => x.name && want.has(x.name.toLowerCase())); };
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr;
+}
+
 async function albumAssets(name) {
   const album = (await immich('/albums')).find((a) => a.albumName === name);
   if (!album) throw new Error(`Immich album "${name}" not found`);
@@ -208,11 +259,29 @@ const photos = cached(30 * 60e3, async () => {
     assets = await albumAssets(im.album);
   } else {
     if (im.onThisDay !== false) assets.push(...await onThisDayAssets().catch((e) => { log('memories:', e.message); return []; }));
-    // Filters can reject most of a sample, so draw up to four samples until enough remain.
-    for (let round = 0; round < 4; round++) {
-      assets.push(...await immich('/search/random', { size: 1000, type: 'IMAGE', visibility: 'timeline', withExif: true, withPeople: true }));
-      if (assets.filter((a) => (!im.cameraOnly || (a.exifInfo && a.exifInfo.make)) && (!im.knownPeopleOnly || hasKnownPerson(a))).length >= im.maxPhotos * 1.3) break;
+    const sample = [];
+    const query = { type: 'IMAGE', visibility: 'timeline', withExif: true, withPeople: true };
+    const wanted = familyNames();
+    if (wanted.size) {
+      learnFamily(assets);
+      // Find each family member's Immich id in general samples, then sample each of them directly.
+      for (let round = 0; round < 3 && familyIds.size < wanted.size; round++) {
+        const r = await immich('/search/random', { ...query, size: 1000 });
+        learnFamily(r);
+        sample.push(...r);
+      }
+      const per = Math.ceil((im.maxPhotos * 2) / Math.max(1, familyIds.size));
+      for (const id of familyIds.values()) sample.push(...await immich('/search/random', { ...query, size: Math.min(1000, per), personIds: [id] }));
+      const missing = [...wanted].filter((n) => !familyIds.has(n));
+      if (missing.length) log(`photos: no Immich person named ${missing.map((n) => `"${n}"`).join(', ')} found yet`);
+    } else {
+      // Filters can reject most of a sample, so draw up to four samples until enough remain.
+      for (let round = 0; round < 4; round++) {
+        sample.push(...await immich('/search/random', { ...query, size: 1000 }));
+        if (sample.filter((a) => (!im.cameraOnly || (a.exifInfo && a.exifInfo.make)) && (!im.knownPeopleOnly || hasKnownPerson(a))).length >= im.maxPhotos * 1.3) break;
+      }
     }
+    assets.push(...shuffle(sample)); // memories stay first; the rest mixed so no one person dominates
   }
   // Fail closed: without the exclusion list, show no library photos (the frame falls back to demo ones).
   const excluded = im.excludeDocuments === false ? new Set() : await excludedPhotos();
@@ -222,6 +291,7 @@ const photos = cached(30 * 60e3, async () => {
     if (seen.has(a.id) || a.type !== 'IMAGE' || a.isTrashed || a.isArchived || (a.visibility && a.visibility !== 'timeline')) return false;
     if (im.cameraOnly && !(a.exifInfo && a.exifInfo.make)) return false; // drops most screenshots and saved images
     if (im.knownPeopleOnly && !hasKnownPerson(a)) return false; // someone named in Immich is in it
+    if ((im.people || []).length && !hasFamily(a)) return false; // one of the listed people is in it
     seen.add(a.id);
     return true;
   }).slice(0, im.maxPhotos);
