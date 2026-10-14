@@ -36,6 +36,48 @@
     }).join('');
   }
 
+  // "Riverside Park 100 Main St, Springfield, IL 62701, United States" →
+  // ["Riverside Park", "100 Main St", "Springfield, IL  62701"]. No country.
+  App.addressLines = function (loc) {
+    loc = String(loc || '').trim();
+    if (!loc) return [];
+    if (/^https?:\/\//i.test(loc)) return ['Online meeting'];
+    var parts = loc.split(/\s*,\s*/).filter(Boolean);
+    if (parts.length > 1 && /^(united states( of america)?|usa|us)$/i.test(parts[parts.length - 1])) parts.pop();
+    var out = [];
+    var last = parts[parts.length - 1] || '', sz = last.match(/^([A-Z]{2})[\s-]*(\d{5}(?:-\d{4})?)$/);
+    var cityLine = null;
+    if (sz && parts.length >= 2) {
+      parts.pop();
+      cityLine = parts.pop() + ', ' + sz[1] + '  ' + sz[2];
+    }
+    parts.forEach(function (p, i) {
+      var m = i === 0 && p.match(/^(.*?[^\d\s])\s+(\d+[A-Za-z]?\s+.+)$/); // "Park Name 1200 Street"
+      if (m) out.push(m[1], m[2]); else out.push(p);
+    });
+    if (cityLine) out.push(cityLine);
+    return out;
+  };
+
+  // Shrink the Next Up title until it fits on one line; if it still doesn't, allow up to three lines.
+  // Skipped while the view is hidden (no layout); re-run when the view is shown again.
+  function fitHero() {
+    var t = V.el && V.el.querySelector('.h-hero-title'), box = V.el && V.el.querySelector('.h-hero');
+    if (!t || !t.clientWidth) return;
+    var empty = box.classList.contains('h-hero--empty');
+    function fits() {
+      var wrapped = t.classList.contains('is-wrap');
+      var main = box.querySelector('.h-hero-main') || box;
+      return t.scrollWidth <= t.clientWidth + 1 && (!wrapped || t.scrollHeight <= t.clientHeight + 4) && box.scrollHeight <= box.clientHeight + 1 && main.scrollHeight <= main.clientHeight + 1;
+    }
+    t.classList.remove('is-wrap');
+    var size = empty ? 56 : 72;
+    t.style.fontSize = size + 'px';
+    while (!fits() && size > (empty ? 34 : 44)) { size -= 2; t.style.fontSize = size + 'px'; }
+    if (fits() || empty) return;
+    t.classList.add('is-wrap');
+    while (!fits() && size > 26) { size -= 2; t.style.fontSize = size + "px"; }
+  }
   function hero() {
     var e = App.nextEvent(), now = App.now();
     if (!e) {
@@ -62,10 +104,11 @@
     }
     return '<button class="h-hero" style="' + App.pstyle(p) + '" data-ev="' + e.id + '">' +
       '<div class="h-hero-main">' +
-      '  <div class="label label--on">Next up · ' + App.esc(whoText) + '</div>' +
+      '  <div class="label label--on h-hero-who">Next up · ' + App.esc(whoText) + (e.people.length > 1 ? App.dots(e.people, 16) : '') + '</div>' +
       '  <div class="h-hero-title serif">' + App.esc(e.title) + '</div>' +
-      '  <div class="h-hero-meta">' + App.fmt.range(e.start, e.end) + (e.loc ? ' · ' + App.esc(e.loc) : '') + '</div>' +
-      '  <div class="h-hero-foot">' + (e.people.length > 1 ? App.dots(e.people, 22) : '') + leavePill + '</div>' +
+      '  <div class="h-hero-meta">' + App.fmt.range(e.start, e.end) + '</div>' +
+      (e.loc ? '  <div class="h-hero-loc">' + App.addressLines(e.loc).map(App.esc).join('<br>') + '</div>' : '') +
+      (leavePill ? '  <div class="h-hero-foot">' + leavePill + '</div>' : '') +
       '</div>' + big + '</button>';
   }
 
@@ -146,6 +189,7 @@
     el.querySelector('.h-weather').innerHTML = weather();
     el.querySelector('.h-presence').innerHTML = presence();
     el.querySelector('.h-hero-slot').innerHTML = hero();
+    fitHero();
     el.querySelector('.h-lanes').innerHTML = lanes();
     el.querySelector('.h-chores').innerHTML = chores();
     el.querySelector('.h-shop').innerHTML = shopping();
@@ -166,13 +210,15 @@
           '<div class="h-clock" data-go="calendar"></div>' +
           '<div class="h-weather"></div>' +
           '<div class="h-presence"></div>' +
-          '<div class="h-main"><div class="h-hero-slot"></div><div class="h-lanes" ></div></div>' +
+          '<div class="h-main"><div class="h-hero-slot"></div><div class="h-lanes" ></div>' +
+          '<button class="h-ss" data-screensaver>' + App.icon('photo', 22) + '<span>Screensaver</span></button></div>' +
           '<div class="h-side">' +
           '  <button class="h-photo" data-go="photos"><div class="h-photo-stage"></div><div class="h-photo-cap"></div></button>' +
           '  <button class="h-chores card" data-go="tasks"></button>' +
           '  <div class="h-duo"><button class="h-shop card" data-go="shopping"></button><button class="h-status card" data-go="control"></button></div>' +
           '</div></div>';
         el.addEventListener('click', function (e) {
+          if (e.target.closest('[data-screensaver]')) { App.closeSheet(); App.setMode(App.isNight() ? 'night' : 'ambient'); return; } // tap the screen to come back
           var ev = e.target.closest('[data-ev]');
           if (ev) { App.eventSheet(App.findEvent(ev.dataset.ev)); return; }
           var g = e.target.closest('[data-go]');
@@ -185,7 +231,7 @@
       paint();
       V.slides.start();
     },
-    resume: function () { V.slides.start(); },
+    resume: function () { V.slides.start(); fitHero(); },
     hide: function () { if (V.slides) V.slides.stop(); }
   });
   // Every minute: just the clock and next-up countdown (cheap, even while hidden). Weather on the hour.
@@ -193,6 +239,7 @@
     if (!V.el || !V.el.firstChild) return;
     V.el.querySelector('.h-clock').innerHTML = clock();
     V.el.querySelector('.h-hero-slot').innerHTML = hero();
+    fitHero();
     if (n.getMinutes() === 0) { V.el.querySelector('.h-weather').innerHTML = weather(); V.el.querySelector('.h-lanes').innerHTML = lanes(); }
   });
   App.on('data', function () { if (App.current === 'home') paint(); });

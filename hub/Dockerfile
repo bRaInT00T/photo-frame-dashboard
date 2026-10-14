@@ -14,7 +14,8 @@ COPY hub/server.mjs ./
 # Defaults; compose.yaml mounts your own config.json over this.
 COPY hub/config.example.json ./config.json
 COPY --from=dashboard /src/dashboard/dist ./dist
-ENV DIST=/app/dist PORT=8430 NODE_ENV=production
+ENV DIST=/app/dist PORT=8430 NODE_ENV=production DATA_DIR=/app/data
+RUN mkdir -p /app/data && chown node:node /app/data
 USER node
 EXPOSE 8430
 HEALTHCHECK --interval=60s --timeout=5s CMD wget -qO- http://127.0.0.1:8430/healthz || exit 1

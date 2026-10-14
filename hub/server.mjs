@@ -84,7 +84,8 @@ function peopleFor(cal, title) {
 }
 
 function toEvent(cal, uid, start, end, item) {
-  const title = item.summary || '(busy)';
+  const raw = item.summary || '(busy)';
+  const title = cal.label ? cal.label + ': ' + raw : raw; // e.g. "Flag Football: Chiefs @ Cardinals"
   const e = { id: uid + '@' + start.toString(), title, people: peopleFor(cal, title) };
   if (start.isDate) {
     e.allDay = true;
@@ -108,7 +109,8 @@ async function haCalendarEvents(cal, from, to) {
     { headers: { authorization: 'Bearer ' + process.env.HA_TOKEN }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) throw new Error(`calendar ${cal.ha}: ${r.status}`);
   return (await r.json()).map((ev) => {
-    const title = ev.summary || '(busy)';
+    const raw = ev.summary || '(busy)';
+    const title = cal.label ? cal.label + ': ' + raw : raw; // e.g. "Flag Football: Chiefs @ Cardinals"
     const e = { id: (ev.uid || title) + '@' + (ev.start.dateTime || ev.start.date), title, people: peopleFor(cal, title) };
     if (ev.start.date) { e.allDay = true; e.startDate = ev.start.date; e.endDate = ev.end.date || ev.start.date; }
     else { e.start = new Date(ev.start.dateTime).toISOString(); e.end = new Date(ev.end.dateTime || ev.start.dateTime).toISOString(); }
@@ -462,6 +464,41 @@ function readJSON(req, limit = 4096) {
   });
 }
 
+// ------------------------------------------------------------------ frame settings
+// Changed from the dashboard's Settings tab; kept in DATA_DIR/settings.json so they survive
+// restarts. Only these keys and values are accepted.
+const DATA_DIR = process.env.DATA_DIR || path.join(HERE, 'data');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const SETTINGS_RULES = {
+  screensaverAfter: [60, 120, 300, 600, 900, 0],   // seconds idle before the screensaver; 0 = never
+  photoSeconds: [10, 20, 30, 60, 120],
+  showClock: [true, false],                        // time, date and weather on the screensaver
+  showPhotoInfo: [true, false],                    // photo month/year and place
+  returnHomeAfter: [30, 60, 120, 300, 0],          // seconds idle before going back to Today; 0 = never
+  nightMode: [true, false],
+  nightStart: [20, 21, 22, 23],
+  nightEnd: [5, 6, 7, 8],
+  nightScreen: ['clock', 'black'],
+};
+const SETTINGS_DEFAULTS = {
+  screensaverAfter: 120, photoSeconds: 30, showClock: true, showPhotoInfo: true,
+  returnHomeAfter: 60, nightMode: true, nightStart: 22, nightEnd: 6, nightScreen: 'clock',
+};
+let settings = { ...SETTINGS_DEFAULTS };
+try { Object.assign(settings, JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'))); } catch {}
+
+function updateSettings(patch) {
+  for (const [k, v] of Object.entries(patch || {})) {
+    if (!SETTINGS_RULES[k] || !SETTINGS_RULES[k].includes(v)) return [400, `bad setting ${k}`];
+  }
+  settings = { ...settings, ...patch };
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(SETTINGS_FILE + '.tmp', JSON.stringify(settings, null, 2));
+  fs.renameSync(SETTINGS_FILE + '.tmp', SETTINGS_FILE);
+  log('settings:', JSON.stringify(patch));
+  return [200, JSON.stringify(settings)];
+}
+
 // ------------------------------------------------------------------ http
 function send(res, code, body, type = 'text/plain; charset=utf-8') {
   res.writeHead(code, { 'content-type': type, 'cache-control': 'no-store' });
@@ -475,6 +512,7 @@ async function state() {
   return {
     updated: new Date().toISOString(),
     build: BUILD,
+    settings,
     timezone: TZ,
     units: CONFIG.units,
     people: CONFIG.people.map(({ id, name, color, ink }) => ({ id, name, color, ink })),
@@ -503,6 +541,7 @@ http.createServer(async (req, res) => {
     if (url.pathname === '/api/ha' && req.method === 'GET') return send(res, 200, JSON.stringify(await haState().catch((e) => { log('ha:', e.message); return null; })), 'application/json');
     const cam = url.pathname.match(/^\/api\/ha\/camera\/([a-z0-9_.]+)$/);
     if (cam) return await haCamera(cam[1], res);
+    if (url.pathname === '/api/settings' && req.method === 'POST') { const [code, body] = updateSettings(await readJSON(req)); return send(res, code, body, code === 200 ? 'application/json' : 'text/plain; charset=utf-8'); }
     if (url.pathname === '/api/ha/call' && req.method === 'POST') { const [code, body] = await haCall(await readJSON(req)); return send(res, code, body, code === 200 ? 'application/json' : 'text/plain; charset=utf-8'); }
     const m = url.pathname.match(/^\/api\/photo\/([^/]+)$/);
     if (m) return await proxyPhoto(m[1], url.searchParams.get('size'), res);

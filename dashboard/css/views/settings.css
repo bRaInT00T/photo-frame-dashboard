@@ -1,0 +1,16 @@
+/* Settings */
+.st { height: 100%; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-bottom: 24px; }
+.st-head { display: flex; align-items: center; gap: 24px; }
+.st-head h1 { font-size: 64px; line-height: .95; margin-right: auto; }
+.st-actions { display: flex; gap: 10px; }
+.st-actions .btn { display: inline-flex; align-items: center; gap: 8px; }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.st-card { background: var(--card); border-radius: var(--r); padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.st-label { font-size: 19px; font-weight: 700; display: flex; flex-direction: column; }
+.st-label small { font-size: 14px; font-weight: 500; color: var(--mute); }
+.st-row .seg button { min-height: 46px; padding: 0 14px; font-size: 15px; }
+.st-note { font-size: 15px; color: var(--mute); line-height: 1.3; }
+.st-status { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+.st-status span { display: flex; flex-direction: column; font-size: 14px; color: var(--mute); }
+.st-status b { font-size: 24px; color: var(--ink); }

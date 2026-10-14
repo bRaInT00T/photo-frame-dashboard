@@ -13,3 +13,8 @@ services:
     volumes:
       # Edit config.json (family, calendars, location) and restart; no rebuild needed.
       - ./config.json:/app/config.json:ro
+      # Settings changed on the frame (Settings tab) are kept here.
+      - hub-data:/app/data
+
+volumes:
+  hub-data:

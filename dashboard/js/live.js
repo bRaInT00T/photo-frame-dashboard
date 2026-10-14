@@ -63,7 +63,29 @@
     App.resetSlideshows();
   }
 
+  var settingsSig = '';
+  function applySettings(st) {
+    if (!st) return;
+    var sig = JSON.stringify(st);
+    if (sig === settingsSig) return;
+    settingsSig = sig;
+    App.settings = st;
+    App.idle.ambient = st.screensaverAfter || Infinity; // 0 = never
+    App.idle.home = st.returnHomeAfter || Infinity;
+    App.emit('settings', st);
+  }
+  App.saveSetting = function (key, value, cb) {
+    var patch = {}; patch[key] = value;
+    var before = App.settings;
+    applySettings(Object.assign({}, App.settings, patch)); // feel instant
+    fetch('/api/settings', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(patch) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (st) { applySettings(st); if (cb) cb(true); })
+      .catch(function () { applySettings(before); if (cb) cb(false); });
+  };
+
   function apply(s) {
+    applySettings(s.settings);
     applyPeople(s.people);
     D.units = s.units;
     if (s.events) applyEvents(s.events);
@@ -140,6 +162,7 @@
         haSig = ''; // people were reset; re-apply presence on the next Home Assistant poll
         if (live !== true) { live = true; App.setTime(null); loadHA(); } // real clock; also re-renders
         else App.rerender();
+        App.emit('data'); // other views rebuild with the new data when shown
       })
       .catch(function (err) {
         console.warn('frame-hub unavailable:', err.message);

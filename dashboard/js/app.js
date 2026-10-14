@@ -24,7 +24,12 @@
   App.dayStart = function (d) { var x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
   App.addDays = function (d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; };
   App.sameDay = function (a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); };
-  App.isNight = function () { var h = App.now().getHours(); return h >= 22 || h < 6; };
+  App.settings = { screensaverAfter: 120, photoSeconds: 30, showClock: true, showPhotoInfo: true,
+    returnHomeAfter: 60, nightMode: true, nightStart: 22, nightEnd: 6, nightScreen: 'clock' };
+  App.isNight = function () {
+    var st = App.settings, h = App.now().getHours();
+    return st.nightMode !== false && (h >= st.nightStart || h < st.nightEnd);
+  };
 
   var DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -131,10 +136,11 @@
   App.weatherNow = function () {
     var W = D.weather, h = App.now().getHours();
     var rainAt = -1;
-    for (var i = h; i < 24; i++) if (W.p[i] >= 50) { rainAt = i; break; }
+    function wet(i) { return W.p[i] >= 50 || W.c[i] === 'rain' || W.c[i] === 'snow'; }
+    for (var i = h; i < 24; i++) if (wet(i)) { rainAt = i; break; }
     var summary, advice;
     if (rainAt === h) {
-      var stop = h; while (stop < 24 && W.p[stop] >= 50) stop++;
+      var stop = h; while (stop < 24 && wet(stop)) stop++;
       summary = 'Rain until ' + App.fmt.hour(new Date(2000, 0, 1, stop));
       advice = 'Umbrella weather';
     } else if (rainAt > -1) {

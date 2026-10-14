@@ -6,7 +6,7 @@ The frame's kiosk opens `http://<server>:8430/`.
 | Source | What it feeds |
 | --- | --- |
 | Google Calendar (secret iCal address) | Calendar and Today. An event belongs to a person when their name is in the title; otherwise it is a family event |
-| Public calendar feeds | League or school schedules via `{ "url": "https://…ics" or "webcal://…", "people": ["id"] }` |
+| Public calendar feeds | League or school schedules via `{ "url": "https://…ics" or "webcal://…", "people": ["id"], "label": "Flag Football" }` (the optional label prefixes each title) |
 | Home Assistant calendars | Calendars shared with you (no secret address needed) via `{ "ha": "calendar.x", "people": ["id"] }` in `calendars`. The same event on two calendars shows once, for everyone involved |
 | Open-Meteo (no key) | Weather, clock area and hourly strip, in your units and time zone |
 | Immich | Photos: a random sample of the whole library (or one album), camera photos with named people only (or only the people listed in `immich.people`), "On this day" first, portraits cropped around faces. Document-like photos (IDs, receipts, screenshots) are excluded with Immich's smart search, and the hub fails closed if that search fails |

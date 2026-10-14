@@ -12,6 +12,7 @@ import './views/photos.js';
 import './views/control.js';
 import './views/agents.js';
 import './views/todo.js';
+import './views/settings.js';
 import './views/ambient.js';
 import './diag.js';
 import './live.js';
