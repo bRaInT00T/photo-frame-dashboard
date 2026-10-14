@@ -8,7 +8,10 @@
 .amb-right { flex: none; }
 .amb-nw { white-space: nowrap; } /* if the date wraps, break after the weekday */
 .amb-time { font-size: 110px; line-height: .78; letter-spacing: -.04em; }
-.amb-date { font-family: var(--serif); font-size: 80px; line-height: 1; margin-top: 16px; }
+/* Date in the top-left corner, over a light top gradient */
+.amb-scrim--top { top: 0; bottom: auto; height: 34%; background: linear-gradient(180deg, rgba(0, 0, 0, .6), rgba(0, 0, 0, 0)); }
+.amb-top { position: absolute; top: 40px; left: 60px; right: 60px; }
+.amb-date { font-family: var(--serif); font-size: 80px; line-height: 1; }
 .amb-right { display: flex; flex-direction: column; align-items: flex-end; gap: 14px; }
 .amb-wx { display: flex; align-items: center; gap: 12px; }
 .amb-wx .num { font-size: 150px; line-height: .8; }

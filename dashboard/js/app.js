@@ -297,6 +297,9 @@
     idleSec++;
     var blocked = $('#takeover').classList.contains('is-open');
     if (App.mode === 'nightdash' && idleSec >= 20) { App.setMode('night'); return; }
+    // Idle screens follow the clock: photos by day, the dim night clock from 10 PM to 6 AM.
+    if (App.mode === 'night' && !App.isNight()) { App.setMode('ambient'); return; }
+    if (App.mode === 'ambient' && App.isNight()) { App.setMode('night'); return; }
     if (App.mode !== 'day' || blocked) return;
     if (idleSec === App.idle.home && App.current !== 'home') { App.closeSheet(); App.go('home'); }
     if (idleSec >= App.idle.ambient) {
