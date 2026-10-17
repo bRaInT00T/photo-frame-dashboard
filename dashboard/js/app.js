@@ -133,8 +133,87 @@
     for (var i = 0; i < D.routines.length; i++) if (h >= D.routines[i].from && h < D.routines[i].to) return D.routines[i];
     return D.routines[2];
   };
+  // Weather description from frame-hub's detailed forecast (WMO codes, rain chance and amount,
+  // feels-like, gusts, UV). The demo data has none of that and keeps the simple wording.
+  var WMO = {
+    0: 'Clear', 1: 'Mostly clear', 2: 'Partly cloudy', 3: 'Cloudy', 45: 'Fog', 48: 'Freezing fog',
+    51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle', 56: 'Freezing drizzle', 57: 'Freezing drizzle',
+    61: 'Light rain', 63: 'Rain', 65: 'Heavy rain', 66: 'Freezing rain', 67: 'Freezing rain',
+    71: 'Light snow', 73: 'Snow', 75: 'Heavy snow', 77: 'Snow grains', 80: 'Light showers', 81: 'Showers',
+    82: 'Heavy showers', 85: 'Snow showers', 86: 'Heavy snow showers', 95: 'Thunderstorms', 96: 'Storms with hail', 99: 'Storms with hail'
+  };
+  function wmoLabel(code, day) {
+    if (day && code === 0) return 'Sunny';
+    if (day && code === 1) return 'Mostly sunny';
+    return WMO[code] || 'Cloudy';
+  }
+  function precipKind(code) {
+    if (code >= 95) return 'storms';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+    if (code >= 80) return 'showers';
+    if (code >= 51 && code <= 57) return 'drizzle';
+    if (code >= 61) return 'rain';
+    return null;
+  }
+  function detailedWeather(W, h) {
+    var F = function (t) { return D.units === 'F' ? t : t * 9 / 5 + 32; }; // thresholds below are in °F
+    var gustMph = function (g) { return D.units === 'F' ? g : g / 1.609; };
+    var end = Math.min(W.wc.length, h + 12), hrs = [];
+    for (var i = h; i < end; i++) hrs.push(i);
+    var hourName = function (i) { return App.fmt.hour(new Date(2000, 0, 1, i % 24)); };
+    var wet = function (i) { return !!precipKind(W.wc[i]) || (W.p[i] >= 50 && W.mm[i] > 0.1); };
+    var kindAt = function (i) { return precipKind(W.wc[i]) || 'rain'; };
+    var now = W.now || { t: W.t[h], feels: W.f[h], code: W.wc[h], day: !!W.day[h], gust: W.g[h] };
+
+    var summary;
+    var firstWet = hrs.filter(wet)[0];
+    if (wet(h) || precipKind(now.code)) {
+      var stop = h; while (stop < end && wet(stop)) stop++;
+      var k = precipKind(now.code) || kindAt(h);
+      var K = k.charAt(0).toUpperCase() + k.slice(1);
+      summary = stop >= end ? K + ' through ' + (h + 12 >= 24 ? 'tonight' : 'the day') : K + ' until ' + hourName(stop);
+    } else if (firstWet != null) {
+      var chance = Math.max.apply(null, hrs.filter(function (i) { return i >= firstWet && i < firstWet + 3; }).map(function (i) { return W.p[i]; }));
+      var kw = kindAt(firstWet), Kw = kw.charAt(0).toUpperCase() + kw.slice(1);
+      summary = Kw + (chance >= 60 ? ' likely' : ' possible') + (firstWet - h <= 1 ? ' soon' : ' around ' + hourName(firstWet));
+    } else {
+      var cloudy = function (i) { return W.wc[i] >= 3; };
+      var nowCloudy = cloudy(h), laterClear = hrs.slice(3).some(function (i) { return !cloudy(i); });
+      var allCloudy = hrs.every(cloudy), allClear = hrs.every(function (i) { return W.wc[i] <= 1; });
+      if (W.wc[h] === 45 || W.wc[h] === 48) summary = 'Foggy, dry later';
+      else if (allClear) summary = now.day ? 'Sunny and dry' : 'Clear and dry';
+      else if (allCloudy) summary = 'Cloudy and dry';
+      else if (nowCloudy && laterClear) summary = 'Clearing later';
+      else summary = 'Dry, some clouds';
+    }
+    // Temperature trend over the next few hours.
+    var ahead = hrs.slice(1, 9), peak = ahead.length ? Math.max.apply(null, ahead.map(function (i) { return W.t[i]; })) : now.t;
+    var low = ahead.length ? Math.min.apply(null, ahead.map(function (i) { return W.t[i]; })) : now.t;
+    var trend = '';
+    if (F(peak) - F(now.t) >= 4) trend = ', warming to ' + peak + '°';
+    else if (F(now.t) - F(low) >= 6) trend = ', cooling to ' + low + '°';
+
+    var feels = F(now.feels), gust = Math.max.apply(null, hrs.slice(0, 6).map(function (i) { return gustMph(W.g[i]); }));
+    var uv = Math.max.apply(null, hrs.slice(0, 6).map(function (i) { return W.uv[i]; }));
+    var wetSoon = hrs.slice(0, 6).filter(wet), soonKind = wetSoon.length ? kindAt(wetSoon[0]) : null;
+    var advice;
+    if (soonKind === 'storms') advice = 'Stay in during storms';
+    else if (soonKind === 'snow' || feels <= 32) advice = 'Bundle up';
+    else if (wetSoon.length) advice = Math.max.apply(null, wetSoon.map(function (i) { return W.p[i]; })) >= 60 ? 'Bring an umbrella' : 'Pack a rain jacket';
+    else if (feels <= 45) advice = 'Coat weather';
+    else if (feels <= 58) advice = 'Jacket weather';
+    else if (gust >= 28) advice = 'Windy out';
+    else if (feels >= 90) advice = 'Hot, drink water';
+    else if (uv >= 7 && now.day) advice = 'Wear sunscreen';
+    else if (feels >= 75) advice = 'T-shirt weather';
+    else advice = 'Light layers';
+
+    return { temp: now.t, cond: W.c[h], label: wmoLabel(now.code, now.day), hi: W.hi, lo: W.lo, summary: summary + trend, advice: advice, hour: h };
+  }
+
   App.weatherNow = function () {
     var W = D.weather, h = App.now().getHours();
+    if (W.wc && W.wc.length > h) return detailedWeather(W, h);
     var rainAt = -1;
     function wet(i) { return W.p[i] >= 50 || W.c[i] === 'rain' || W.c[i] === 'snow'; }
     for (var i = h; i < 24; i++) if (wet(i)) { rainAt = i; break; }
@@ -152,7 +231,7 @@
       summary = cool ? 'Clear and cool' : 'Dry all day';
       advice = cool ? 'Jacket weather' : 'Light layers';
     }
-    var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain', snow: 'Snow' };
+    var labels = { sun: 'Sunny', moon: 'Clear', partly: 'Partly cloudy', cloud: 'Overcast', rain: 'Rain', snow: 'Snow', fog: 'Fog', storm: 'Storms' };
     return { temp: W.t[h], cond: W.c[h], label: labels[W.c[h]], hi: W.hi, lo: W.lo, summary: summary, advice: advice, hour: h };
   };
   App.hourly = function (count) {
