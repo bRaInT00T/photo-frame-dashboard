@@ -3,25 +3,35 @@
 .stage[data-mode="ambient"] .ambient { display: block; }
 .amb-stage { position: absolute; top: 0; right: 0; bottom: 0; left: 0; }
 /* Corner caption: one soft gradient in the bottom-left corner; the rest of the photo stays clear */
-.amb-scrim { position: absolute; left: 0; bottom: 0; width: 70%; height: 55%; pointer-events: none;
-  background: radial-gradient(ellipse at 0% 100%, rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, .35) 45%, rgba(0, 0, 0, 0) 75%); }
+.amb-scrim { position: absolute; left: 0; right: 0; bottom: 0; height: 40%; pointer-events: none;
+  background: linear-gradient(0deg, rgba(0, 0, 0, .7) 0%, rgba(0, 0, 0, .35) 45%, rgba(0, 0, 0, 0) 100%); }
 .amb-info { position: absolute; left: 56px; bottom: 44px; right: 56px; }
 /* Settings: hide parts of the screensaver; black night screen */
-.ambient.no-clock .amb-info, .ambient.no-clock .amb-scrim:not(.amb-scrim--right) { display: none; }
-.ambient.no-photo-info .amb-photo, .ambient.no-photo-info .amb-scrim--right { display: none; }
+.ambient.no-clock .amb-info { display: none; }
+.ambient.no-clock.no-photo-info .amb-scrim { display: none; }
+.ambient.no-photo-info .amb-photo { display: none; }
 .night.is-black .nt-inner { display: none; }
 /* Photo caption, bottom-right */
-.amb-scrim--right { left: auto; right: 0; width: 45%; height: 35%; background: radial-gradient(ellipse at 100% 100%, rgba(0, 0, 0, .6) 0%, rgba(0, 0, 0, .25) 45%, rgba(0, 0, 0, 0) 75%); }
-.amb-photo { position: absolute; right: 56px; bottom: 50px; max-width: 520px; text-align: right; text-shadow: 0 2px 12px rgba(0, 0, 0, .5); }
+.amb-photo { position: absolute; right: 56px; bottom: 50px; max-width: 300px; text-align: right; text-shadow: 0 2px 12px rgba(0, 0, 0, .5); }
 .amb-photo-when { font-size: 22px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-.amb-photo-where { font-family: var(--serif); font-style: italic; font-size: 32px; line-height: 1.1; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.amb-photo-where { font-family: var(--serif); font-style: italic; font-size: 28px; line-height: 1.1; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .amb-cap { display: inline-flex; flex-direction: column; text-shadow: 0 2px 12px rgba(0, 0, 0, .45); }
 .amb-time { font-size: 128px; line-height: .8; letter-spacing: -.04em; }
 .amb-line { display: flex; align-items: center; gap: 12px; margin-top: 18px; font-family: var(--serif); font-size: 40px; line-height: 1; white-space: nowrap; }
 .amb-line .num { font-family: var(--sans); font-size: 40px; font-weight: 800; }
 .amb-line em { font-style: italic; opacity: .9; }
 .amb-line .i { flex: none; }
-.amb-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .7; margin: 0 4px; }
+/* Weather, centred along the bottom between the date (left) and the photo's date/place (right) */
+.amb-wx { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); width: 520px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; text-shadow: 0 2px 12px rgba(0, 0, 0, .45); }
+.amb-wx-now { display: flex; align-items: center; justify-content: center; gap: 12px; font-family: var(--serif); font-size: 34px; line-height: 1.1; white-space: nowrap; }
+.amb-week { display: flex; justify-content: center; gap: 4px; }
+.amb-day { width: 70px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.amb-day-name { font-size: 14px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.amb-day-t { font-size: 16px; opacity: .8; white-space: nowrap; }
+.amb-day-t b { font-size: 19px; font-weight: 800; opacity: 1; }
+.amb-wx .num { font-family: var(--sans); font-size: 40px; font-weight: 800; }
+.amb-wx em { font-style: italic; opacity: .9; }
+.amb-wx .i { flex: none; }
 
 /* Night (dim red clock) — kept above a minimum readable brightness */
 .night { position: absolute; top: 0; right: 0; bottom: 0; left: 0; z-index: 66; background: #000; display: none; place-items: center; cursor: pointer; }

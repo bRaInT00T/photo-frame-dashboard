@@ -54,9 +54,9 @@ const weather = cached(15 * 60e3, async () => {
   const { latitude, longitude } = CONFIG.location;
   const f = CONFIG.units === 'F';
   const q = new URLSearchParams({
-    latitude, longitude, timezone: TZ, forecast_days: '2',
+    latitude, longitude, timezone: TZ, forecast_days: '7',
     hourly: 'temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,is_day,wind_gusts_10m,uv_index',
-    daily: 'temperature_2m_max,temperature_2m_min',
+    daily: 'temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max',
     current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code,is_day',
     temperature_unit: f ? 'fahrenheit' : 'celsius',
     wind_speed_unit: f ? 'mph' : 'kmh',
@@ -84,6 +84,11 @@ const weather = cached(15 * 60e3, async () => {
       t: Math.round(w.current.temperature_2m), feels: Math.round(w.current.apparent_temperature),
       code: w.current.weather_code, day: !!w.current.is_day, gust: Math.round(w.current.wind_gusts_10m),
     },
+    // 7-day forecast, today first.
+    days: w.daily.time.map((date, i) => ({
+      date, icon: cond(w.daily.weather_code[i], 1), hi: Math.round(w.daily.temperature_2m_max[i]),
+      lo: Math.round(w.daily.temperature_2m_min[i]), p: w.daily.precipitation_probability_max[i] ?? 0,
+    })),
     place: CONFIG.location.name,
   };
 });

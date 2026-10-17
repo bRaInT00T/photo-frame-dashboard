@@ -5,13 +5,25 @@
   var amb = { show: null }, shiftTimer = null;
 
   // Corner caption: time, then date and weather on one line, in the bottom-left only.
+  // Seven-day strip under the current weather (hub data only; the demo has no daily forecast).
+  function week() {
+    var days = D.weather.days;
+    if (!days || !days.length) return '';
+    return '<div class="amb-week">' + days.slice(0, 7).map(function (d, i) {
+      var a = d.date.split('-'), day = new Date(+a[0], +a[1] - 1, +a[2]);
+      return '<div class="amb-day"><span class="amb-day-name">' + (i === 0 ? 'Today' : App.fmt.dayShort(day)) + '</span>' +
+        App.icon(d.icon, 26) + '<span class="amb-day-t"><b>' + d.hi + '°</b> ' + d.lo + '°</span></div>';
+    }).join('') + '</div>';
+  }
   function ambientInfo() {
     var n = App.now(), w = App.weatherNow();
+    // Left: time and date. Centre: weather (between the date and the photo's date/place).
     return '<div class="amb-cap">' +
       '<div class="amb-time num">' + App.fmt.time(n, false) + '</div>' +
-      '<div class="amb-line"><span>' + App.fmt.dayShort(n) + ', ' + App.fmt.monthShort(n) + ' ' + n.getDate() + '</span>' +
-      '<i class="amb-dot"></i>' + App.icon(w.cond, 40) + '<span class="num">' + w.temp + '°</span><em>' + w.summary + '</em></div>' +
-      '</div>';
+      '<div class="amb-line"><span>' + App.fmt.dayShort(n) + ', ' + App.fmt.monthShort(n) + ' ' + n.getDate() + '</span></div>' +
+      '</div>' +
+      '<div class="amb-wx"><div class="amb-wx-now">' + App.icon(w.cond, 40) + '<span class="num">' + w.temp + '°</span><em>' + w.summary + '</em></div>' +
+      week() + '</div>';
   }
   // Bottom-right: when and where the current photo was taken ("October 2021" / "Tofino, BC").
   function photoCaption(slide) {
@@ -41,7 +53,7 @@
   }
 
   App.on('ready', function () {
-    $('#ambient').innerHTML = '<div class="amb-stage"></div><div class="amb-scrim"></div><div class="amb-scrim amb-scrim--right"></div><div class="amb-info"></div><div class="amb-photo"></div>';
+    $('#ambient').innerHTML = '<div class="amb-stage"></div><div class="amb-scrim"></div><div class="amb-info"></div><div class="amb-photo"></div>';
     $('#night').innerHTML = '<div class="nt-inner"></div>';
     amb.show = new App.Slideshow($('#ambient .amb-stage'), { layout: 'cover', captions: false, interval: 30000, fillPortrait: true, boxAr: 1280 / 800, onChange: photoCaption });
     // Swipe right: previous photo. Swipe left: next photo. Tap: back to the dashboard.
