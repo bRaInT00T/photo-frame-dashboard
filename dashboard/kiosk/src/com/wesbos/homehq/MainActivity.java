@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -34,6 +35,7 @@ public class MainActivity extends Activity {
   static final float EXIT_SLOP_PX = 60;
 
   private WebView web;
+  private ConnectionWatchdog watchdog;
   private final Handler handler = new Handler(Looper.getMainLooper());
   private final int[] exitIds = new int[2];
   private final float[] exitX = new float[2];
@@ -90,10 +92,25 @@ public class MainActivity extends Activity {
         handler.postDelayed(retry, RETRY_MS);
       }
     });
+    // window.HomeHQ for the dashboard's Settings tab. Only these two actions are exposed.
+    web.addJavascriptInterface(new Object() {
+      @JavascriptInterface
+      public void openSettings() {
+        runOnUiThread(() -> startActivity(new Intent(Settings.ACTION_SETTINGS)));
+      }
+
+      @JavascriptInterface
+      public void openLauncher() {
+        runOnUiThread(() -> MainActivity.this.openLauncher());
+      }
+    }, "HomeHQ");
     setContentView(web);
 
     String url = getIntent().getDataString();
     web.loadUrl(url != null ? url : DEFAULT_URL);
+    // Recover from a lost Wi-Fi connection without a power cycle.
+    watchdog = new ConnectionWatchdog(this, url != null ? url : DEFAULT_URL);
+    watchdog.start();
   }
 
   @Override
@@ -118,6 +135,7 @@ public class MainActivity extends Activity {
     if (url != null) {
       handler.removeCallbacks(retry);
       web.loadUrl(url);
+      if (watchdog != null) watchdog.setUrl(url);
     }
   }
 
@@ -135,6 +153,7 @@ public class MainActivity extends Activity {
   @Override
   protected void onDestroy() {
     handler.removeCallbacksAndMessages(null);
+    if (watchdog != null) watchdog.stop();
     if (web != null) web.destroy();
     super.onDestroy();
   }

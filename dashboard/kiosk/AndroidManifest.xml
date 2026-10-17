@@ -3,6 +3,9 @@
     package="com.wesbos.homehq">
 
   <uses-permission android:name="android.permission.INTERNET" />
+  <!-- ConnectionWatchdog: check and nudge Wi-Fi when the dashboard server is unreachable. -->
+  <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+  <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
   <application
       android:label="Home HQ"

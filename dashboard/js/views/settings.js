@@ -40,7 +40,8 @@
     V.el.innerHTML = '<div class="st">' +
       '<div class="st-head"><h1 class="serif">Settings</h1>' +
       '<div class="st-actions"><button class="btn btn--solid" data-act="screensaver">' + App.icon('photo', 22) + ' Start screensaver</button>' +
-      '<button class="btn" data-act="reload">Reload dashboard</button></div></div>' +
+      '<button class="btn" data-act="reload">Reload dashboard</button>' +
+      (window.HomeHQ ? '<button class="btn" data-act="android">Android settings</button>' : '') + '</div></div>' +
       '<div class="st-grid">' +
       '<section class="st-card"><div class="label">Screensaver</div>' +
       row('Start after', 'screensaverAfter', 'Without a touch') +
@@ -54,7 +55,7 @@
       '</section>' +
       '<section class="st-card"><div class="label">Dashboard</div>' +
       row('Back to Today after', 'returnHomeAfter', 'Without a touch') +
-      '<p class="st-note">Screen brightness and volume need an update to the kiosk app on the frame (over USB).</p>' +
+      '<p class="st-note">' + (window.HomeHQ ? 'From Android settings, tap <b>Dashboard</b> on the floating bar to come back (Accessibility → Home HQ navigation), or unplug and replug the frame.' : 'Android settings is available on the frame itself.') + '</p>' +
       '</section>' +
       '<section class="st-card"><div class="label">Status</div>' + status() + '</section>' +
       '</div></div>';
@@ -71,6 +72,7 @@
     if ((t = e.target.closest('[data-act]'))) {
       if (t.dataset.act === 'screensaver') App.setMode(App.isNight() ? 'night' : 'ambient');
       if (t.dataset.act === 'reload') location.reload();
+      if (t.dataset.act === 'android' && window.HomeHQ) window.HomeHQ.openSettings(); // kiosk app only
     }
   }
 
