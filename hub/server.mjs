@@ -43,7 +43,9 @@ async function getJSON(url, opts = {}) {
 function cond(code, isDay) {
   if (code <= 1) return isDay ? 'sun' : 'moon';
   if (code === 2) return isDay ? 'partly' : 'moon';
-  if (code === 3 || code === 45 || code === 48) return 'cloud';
+  if (code === 45 || code === 48) return 'fog';
+  if (code >= 95) return 'storm';
+  if (code === 3) return 'cloud';
   if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
   return 'rain'; // drizzle, rain, showers, thunderstorms
 }
@@ -53,9 +55,9 @@ const weather = cached(15 * 60e3, async () => {
   const f = CONFIG.units === 'F';
   const q = new URLSearchParams({
     latitude, longitude, timezone: TZ, forecast_days: '2',
-    hourly: 'temperature_2m,precipitation_probability,weather_code,is_day',
+    hourly: 'temperature_2m,apparent_temperature,precipitation_probability,precipitation,weather_code,is_day,wind_gusts_10m,uv_index',
     daily: 'temperature_2m_max,temperature_2m_min',
-    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m',
+    current: 'temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_gusts_10m,weather_code,is_day',
     temperature_unit: f ? 'fahrenheit' : 'celsius',
     wind_speed_unit: f ? 'mph' : 'kmh',
   });
@@ -71,6 +73,17 @@ const weather = cached(15 * 60e3, async () => {
     t: H.temperature_2m.map(Math.round),
     c: H.weather_code.map((code, i) => cond(code, H.is_day[i])),
     p: H.precipitation_probability.map((v) => v ?? 0),
+    // Detail for the description: raw WMO codes, precipitation amount, feels-like, gusts, UV.
+    wc: H.weather_code,
+    mm: H.precipitation.map((v) => v ?? 0),
+    f: H.apparent_temperature.map(Math.round),
+    g: H.wind_gusts_10m.map(Math.round),
+    uv: H.uv_index.map((v) => v ?? 0),
+    day: H.is_day,
+    now: {
+      t: Math.round(w.current.temperature_2m), feels: Math.round(w.current.apparent_temperature),
+      code: w.current.weather_code, day: !!w.current.is_day, gust: Math.round(w.current.wind_gusts_10m),
+    },
     place: CONFIG.location.name,
   };
 });
@@ -79,14 +92,30 @@ const weather = cached(15 * 60e3, async () => {
 function peopleFor(cal, title) {
   if (Array.isArray(cal.people)) return cal.people;
   const hit = CONFIG.people.filter((p) =>
-    [p.name, ...(p.aliases || [])].some((n) => new RegExp('\\b' + n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(title)));
+    [p.name, ...(p.aliases || [])].some((n) => new RegExp('\\b' + escapeRe(n) + '\\b', 'i').test(title)));
   return hit.length ? hit.map((p) => p.id) : CONFIG.people.map((p) => p.id); // no name → whole family
 }
 
+// "Sam - Soccer", "Soccer - Alex", "Soccer - (Sam)", "Soccer (Mom)", "Sam soccer" → "Soccer". The name has
+// already done its job (assigning the event); the person's colour and column show who it's for.
+const escapeRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function stripNames(title) {
+  const names = CONFIG.people.flatMap((p) => [p.name, ...(p.aliases || [])]).map(escapeRe).join('|');
+  if (!names) return title;
+  const one = `(?:${names})`, many = `${one}(?:\\s*(?:&|and|\\+|/|,)\\s*${one})*`;
+  const out = title
+    .replace(new RegExp(`^\\s*\\(?${many}\\)?\\s*[-–—:]\\s*`, 'i'), '')       // "Sam - …", "Mom: …"
+    .replace(new RegExp(`\\s*[-–—]\\s*\\(?${many}\\)?\\s*$`, 'i'), '')         // "… - Alex", "… - (Sam)"
+    .replace(new RegExp(`\\s*\\(${many}\\)\\s*$`, 'i'), '')                    // "… (Dad)"
+    .replace(new RegExp(`^\\s*${many}\\s+(?=\\S)`, 'i'), '')                    // "Sam piano lesson"
+    .trim();
+  return out ? out.charAt(0).toUpperCase() + out.slice(1) : title;
+}
+const eventTitle = (cal, raw) => { const t = stripNames(raw); return cal.label ? cal.label + ': ' + t : t; }; // e.g. "Flag Football: Chiefs @ Cardinals"
+
 function toEvent(cal, uid, start, end, item) {
   const raw = item.summary || '(busy)';
-  const title = cal.label ? cal.label + ': ' + raw : raw; // e.g. "Flag Football: Chiefs @ Cardinals"
-  const e = { id: uid + '@' + start.toString(), title, people: peopleFor(cal, title) };
+  const e = { id: uid + '@' + start.toString(), title: eventTitle(cal, raw), people: peopleFor(cal, raw) };
   if (start.isDate) {
     e.allDay = true;
     e.startDate = start.toString(); // YYYY-MM-DD, built as local midnight on the frame
@@ -110,8 +139,7 @@ async function haCalendarEvents(cal, from, to) {
   if (!r.ok) throw new Error(`calendar ${cal.ha}: ${r.status}`);
   return (await r.json()).map((ev) => {
     const raw = ev.summary || '(busy)';
-    const title = cal.label ? cal.label + ': ' + raw : raw; // e.g. "Flag Football: Chiefs @ Cardinals"
-    const e = { id: (ev.uid || title) + '@' + (ev.start.dateTime || ev.start.date), title, people: peopleFor(cal, title) };
+    const e = { id: (ev.uid || raw) + '@' + (ev.start.dateTime || ev.start.date), title: eventTitle(cal, raw), people: peopleFor(cal, raw) };
     if (ev.start.date) { e.allDay = true; e.startDate = ev.start.date; e.endDate = ev.end.date || ev.start.date; }
     else { e.start = new Date(ev.start.dateTime).toISOString(); e.end = new Date(ev.end.dateTime || ev.start.dateTime).toISOString(); }
     if (ev.location) e.loc = ev.location;
